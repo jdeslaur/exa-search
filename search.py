@@ -43,8 +43,8 @@ def cache_token(token):
 def generate_new_token():
     payload = {
         "grant_type": "client_credentials",
-        "client_id": "gOumU9s7YIUOkciEo8ClxE7k97Q6QijxBCw02lOaDRlMwPMv",
-        "client_secret": "7sTw88mVAUZMxpStROGAxoAv9q2AGMJcC5Zzu5f82R4GZloYA5RdgfeWjWOMrAYS"
+        "client_id": "token_id",
+        "client_secret": "token_secret"
     }
     headers = {
         "accept": "application/json",
