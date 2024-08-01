@@ -5,13 +5,10 @@ from tqdm import tqdm
 from sklearn.cluster import DBSCAN
 from fuzzywuzzy import fuzz
 
+
 filePath = '/Users/justin/Documents/user_entities_clean'
 userStrings = []
 
-""" with open(filePath, 'r') as file:
-    reader = csv.DictReader(file)
-    for row in reader:
-        userStrings.append(row['user']) """
 
 with open(filePath, 'r') as file:
     total_lines = sum(1 for line in file)
@@ -23,10 +20,7 @@ with open(filePath, 'r') as file:
 with tqdm(total=len(userStrings) * len(userStrings), desc="Calculating similarity matrix") as pbar:
     for i in range(len(userStrings)):
         for j in range(len(userStrings)):
-            # Calculate similarity (replace this with your actual similarity calculation)
             similarity_matrix = np.zeros((len(userStrings), len(userStrings)))
-            
-            # Update the progress bar
             pbar.update(1)
 
 for i in range(len(userStrings)):
