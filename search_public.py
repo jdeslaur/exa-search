@@ -7,9 +7,9 @@ import argparse
 import csv
 
 
-
+workingDir = "/Your/directory"
 tokenUrl = "https://api.us-west.exabeam.cloud/auth/v1/token"
-tokenFile = "/Users/justin/Documents/scripts/token_cache.json"
+tokenFile = "/FILE/PATH/token_cache.json"
 tokenExpiration = timedelta(hours=4)
 
 
@@ -17,7 +17,7 @@ tokenExpiration = timedelta(hours=4)
 
 
 
-search_url = "https://api.us-west.exabeam.cloud/search/v2/events"
+searchUrl = "https://api.us-west.exabeam.cloud/search/v2/events"
 now = datetime.now()
 yesterday = now - timedelta(days=1)
 yesterday_formatted = yesterday.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -96,12 +96,10 @@ def main():
             "content-type": "application/json",
             "authorization": "Bearer {}".format(bearer_token)
         }
-        userSearchResponse = requests.post(search_url, json=userDataValidationpayload, headers=userHeaders)
-        #print(userSearchResponse)
+        userSearchResponse = requests.post(searchUrl, json=userDataValidationpayload, headers=userHeaders)
         rawData = json.loads(userSearchResponse.text) 
-        #print(rawData)
         try:
-            with open(f"/Users/justin/Downloads/user_field_output_{now_formatted}.txt", 'w+') as file:
+            with open(f"{workingDir}/user_field_output_{now_formatted}.txt", 'w+') as file:
                 fieldNames = ['user','count','msg_type']
                 writer = csv.DictWriter(file, fieldnames=fieldNames)
                 writer.writeheader()
@@ -127,11 +125,11 @@ def main():
             "content-type": "application/json",
             "authorization": "Bearer {}".format(bearer_token)
         }
-        dest_ipSearchResponse = requests.post(search_url, json=dest_ipDataValidationpayload, headers=dest_ipHeaders)
+        dest_ipSearchResponse = requests.post(searchUrl, json=dest_ipDataValidationpayload, headers=dest_ipHeaders)
         print(dest_ipSearchResponse)
         rawData = json.loads(dest_ipSearchResponse.text) 
         try:
-            with open(f"/Users/justin/Downloads/dest_ip_field_output_{now_formatted}.txt", 'w+') as file:
+            with open(f"{workingDir}/dest_ip_field_output_{now_formatted}.txt", 'w+') as file:
                 fieldNames = ['dest_ip','count','msg_type']
                 writer = csv.DictWriter(file, fieldnames=fieldNames)
                 writer.writeheader()
