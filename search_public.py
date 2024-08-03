@@ -96,7 +96,7 @@ def main():
             "startTime": f"{yesterday_formatted}",
             "endTime": f"{now_formatted}"
         }
-        tasks.append(("user_field_output", user_payload, ["user", "count", "msg_type"]))
+        tasks.append(("user_field_output", user_payload, common_headers, ["user", "count", "msg_type"]))
 
     if args.field == 'dest_ip':
         dest_ip_payload = {
@@ -109,12 +109,12 @@ def main():
             "startTime": f"{yesterday_formatted}",
             "endTime": f"{now_formatted}"
         }
-        tasks.append(("dest_ip_field_output", dest_ip_payload, ["dest_ip", "count", "msg_type"]))
+        tasks.append(("dest_ip_field_output", dest_ip_payload, common_headers, ["dest_ip", "count", "msg_type"]))
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
         futures = [
-            executor.submit(run_query, payload, common_headers, f"{workingDir}/{name}_{now_formatted}.txt", fieldnames)
-            for name, payload, fieldnames in tasks
+            executor.submit(run_query, payload, headers, f"{workingDir}/{name}_{now_formatted}.txt", fieldnames)
+            for name, payload, headers, fieldnames in tasks
         ]
         for future in concurrent.futures.as_completed(futures):
             try:
@@ -124,3 +124,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
