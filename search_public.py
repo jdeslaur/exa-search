@@ -1,22 +1,16 @@
-#from arepl_dump import dump
 import requests
 import json
 import os
 from datetime import datetime, timedelta
 import argparse
 import csv
+import concurrent.futures
 
-
+# Configuration
 workingDir = "/Your/directory"
 tokenUrl = "https://api.us-west.exabeam.cloud/auth/v1/token"
 tokenFile = "/FILE/PATH/token_cache.json"
 tokenExpiration = timedelta(hours=4)
-
-
-
-
-
-
 searchUrl = "https://api.us-west.exabeam.cloud/search/v2/events"
 now = datetime.now()
 yesterday = now - timedelta(days=1)
@@ -51,7 +45,8 @@ def generate_new_token():
         "content-type": "application/json"
     }
     response = requests.post(tokenUrl, json=payload, headers=headers)
-    token = json.loads(response.text)
+    response.raise_for_status()
+    token = response.json()
     bearer_token = token['access_token']
     cache_token(bearer_token)
     return bearer_token
@@ -65,22 +60,33 @@ def get_bearer_token():
 bearer_token = get_bearer_token()
 print(bearer_token)
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description="A script that accepts query arguments, primarily for data validation.")
-    parser.add_argument(
-        '-f','--field',
-        type=str,
-        required=True,
-        help='The type of query to run, which field are we going to validate'
-    )
+    parser.add_argument('-f', '--field', type=str, required=True, help='The type of query to run, which field are we going to validate')
     return parser.parse_args()
 
-def main():    
+def run_query(payload, headers, output_file, fieldnames):
+    response = requests.post(searchUrl, json=payload, headers=headers)
+    response.raise_for_status()
+    rawData = response.json()
+    with open(output_file, 'w+', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        if isinstance(rawData, dict) and 'rows' in rawData:
+            for data in rawData['rows']:
+                writer.writerow(data)
+
+def main():
     args = parse_args()
-    print(args)
+    common_headers = {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "authorization": f"Bearer {bearer_token}"
+    }
+    tasks = []
+
     if args.field == 'user':
-        userDataValidationpayload = {
+        user_payload = {
             "limit": 1000,
             "groupBy": ["user","msg_type"],
             "orderBy": ["count DESC"],
@@ -90,27 +96,10 @@ def main():
             "startTime": f"{yesterday_formatted}",
             "endTime": f"{now_formatted}"
         }
-
-        userHeaders = {
-            "accept": "application/json",
-            "content-type": "application/json",
-            "authorization": "Bearer {}".format(bearer_token)
-        }
-        userSearchResponse = requests.post(searchUrl, json=userDataValidationpayload, headers=userHeaders)
-        rawData = json.loads(userSearchResponse.text) 
-        try:
-            with open(f"{workingDir}/user_field_output_{now_formatted}.txt", 'w+') as file:
-                fieldNames = ['user','count','msg_type']
-                writer = csv.DictWriter(file, fieldnames=fieldNames)
-                writer.writeheader()
-                if isinstance(rawData, dict) and 'rows' in rawData:
-                    for data in rawData['rows']:
-                        writer.writerow(data)
-        except OSError as e:
-            print(f"An error occurred: {e}")
+        tasks.append(("user_field_output", user_payload, ["user", "count", "msg_type"]))
 
     if args.field == 'dest_ip':
-        dest_ipDataValidationpayload = {
+        dest_ip_payload = {
             "limit": 1000,
             "groupBy": ["dest_ip","msg_type"],
             "orderBy": ["count DESC"],
@@ -120,29 +109,18 @@ def main():
             "startTime": f"{yesterday_formatted}",
             "endTime": f"{now_formatted}"
         }
-        dest_ipHeaders = {
-            "accept": "application/json",
-            "content-type": "application/json",
-            "authorization": "Bearer {}".format(bearer_token)
-        }
-        dest_ipSearchResponse = requests.post(searchUrl, json=dest_ipDataValidationpayload, headers=dest_ipHeaders)
-        print(dest_ipSearchResponse)
-        rawData = json.loads(dest_ipSearchResponse.text) 
-        try:
-            with open(f"{workingDir}/dest_ip_field_output_{now_formatted}.txt", 'w+') as file:
-                fieldNames = ['dest_ip','count','msg_type']
-                writer = csv.DictWriter(file, fieldnames=fieldNames)
-                writer.writeheader()
-                if isinstance(rawData, dict) and 'rows' in rawData:
-                    for data in rawData['rows']:
-                        writer.writerow(data)
-        except OSError as e:
-            print(f"An error occurred: {e}")
+        tasks.append(("dest_ip_field_output", dest_ip_payload, ["dest_ip", "count", "msg_type"]))
 
-
-
-
-
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [
+            executor.submit(run_query, payload, common_headers, f"{workingDir}/{name}_{now_formatted}.txt", fieldnames)
+            for name, payload, fieldnames in tasks
+        ]
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     main()
